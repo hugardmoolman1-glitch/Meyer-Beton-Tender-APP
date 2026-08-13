@@ -1,0 +1,22 @@
+# HTTPS via Caddy, which auto-provisions a Let's Encrypt cert for DOMAIN.
+# Requires a domain's A record already pointed at this VPS's IP.
+# docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

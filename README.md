@@ -12,6 +12,12 @@ An internal tool for digitizing Meyer Beton's tender process:
 - `backend/` - FastAPI + SQLAlchemy, SQLite by default (swap `DATABASE_URL` for Postgres in production).
 - `frontend/` - React + TypeScript (Vite).
 
+## Deploying
+
+To run this somewhere with real internet access (needed for "Fetch from
+eTenders" - see the note below), see **[DEPLOY.md](DEPLOY.md)** for a
+Docker-based VPS setup with an optional one-command HTTPS option.
+
 ## Running locally
 
 ### Backend

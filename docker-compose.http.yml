@@ -1,0 +1,6 @@
+# Plain HTTP, reachable at http://<your-vps-ip>/ - no domain or TLS needed.
+# docker compose -f docker-compose.yml -f docker-compose.http.yml up -d --build
+services:
+  frontend:
+    ports:
+      - "80:80"

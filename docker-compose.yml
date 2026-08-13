@@ -1,0 +1,29 @@
+# Base stack - builds backend + frontend but publishes no ports on its own.
+# Combine with an override to actually expose it:
+#   docker compose -f docker-compose.yml -f docker-compose.http.yml up -d --build   (plain HTTP on port 80)
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build    (HTTPS via Caddy, needs a domain)
+# See DEPLOY.md.
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - tender_data:/app/data
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: ""
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+
+volumes:
+  tender_data:
