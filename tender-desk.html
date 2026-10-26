@@ -1,0 +1,580 @@
+<title>Meyer Beton Tender Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column; a dark-green bar with tabs, then the current view. Concrete-grey neutrals, Meyer Beton green accent. */
+:root {
+  --bg: #f3f4f2;
+  --surface: #ffffff;
+  --sunk: #e9ebe7;
+  --line: #d6dad3;
+  --fg: #1d221e;
+  --muted: #5d665f;
+  --accent: #1f5e3c;
+  --accent-fg: #ffffff;
+  --accent-soft: #e2efe6;
+  --bar: #1f5e3c;
+  --bar-fg: #ffffff;
+  --good: #1f7a45;
+  --warn: #8a6100;
+  --warn-soft: #fbf1d9;
+  --bad: #b3261e;
+  --bad-soft: #fbe5e3;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151816; --surface: #1d211e; --sunk: #252a26; --line: #343a35; --fg: #e6e9e5; --muted: #9aa49c;
+    --accent: #5fbf86; --accent-fg: #0f1a13; --accent-soft: #1f3327; --bar: #16301f; --bar-fg: #e6e9e5;
+    --good: #6fcf94; --warn: #e2b85a; --warn-soft: #3a3220; --bad: #ef8a80; --bad-soft: #3d2321; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151816; --surface: #1d211e; --sunk: #252a26; --line: #343a35; --fg: #e6e9e5; --muted: #9aa49c;
+  --accent: #5fbf86; --accent-fg: #0f1a13; --accent-soft: #1f3327; --bar: #16301f; --bar-fg: #e6e9e5;
+  --good: #6fcf94; --warn: #e2b85a; --warn-soft: #3a3220; --bad: #ef8a80; --bad-soft: #3d2321; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bar); }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1180px; margin: 0 auto; }
+header.bar { background: var(--bar); color: var(--bar-fg); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+header.bar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding-block: 12px; }
+.brand { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: 0.01em; }
+.brand small { font-family: var(--body); font-weight: 400; opacity: 0.75; font-size: 13px; margin-left: 8px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+nav.tabs button { background: transparent; color: var(--bar-fg); border: 1px solid transparent; padding: 6px 12px; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; opacity: 0.85; }
+nav.tabs button:hover { opacity: 1; border-color: color-mix(in srgb, var(--bar-fg) 30%, transparent); }
+nav.tabs button[aria-current="page"] { opacity: 1; background: color-mix(in srgb, var(--bar-fg) 16%, transparent); }
+main.wrap { padding-block: 24px 64px; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 26px; }
+h2 { font-size: 18px; }
+h3 { font-size: 15px; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.lede { color: var(--muted); max-width: 68ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+button.btn, label.btn { font: inherit; font-size: 14px; font-weight: 500; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+button.btn:hover, label.btn:hover { filter: brightness(1.08); }
+button.btn.ghost, label.btn.ghost { background: transparent; color: var(--accent); }
+button.btn.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+button.btn.danger.armed { background: var(--bad); color: var(--surface); }
+button.btn.sm { padding: 3px 9px; font-size: 13px; }
+button.btn:disabled { opacity: 0.5; cursor: default; filter: none; }
+button.link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select, textarea { font: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; min-width: 0; }
+textarea { width: 100%; resize: vertical; }
+input.num { width: 104px; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.form label.wide { grid-column: 1 / -1; }
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; background: var(--sunk); padding: 8px 10px; white-space: nowrap; }
+td { padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--accent-soft); }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.pill.open { background: var(--accent-soft); color: var(--accent); }
+.pill.submitted { background: var(--warn-soft); color: var(--warn); }
+.pill.won { background: var(--accent); color: var(--accent-fg); }
+.pill.lost { background: var(--bad-soft); color: var(--bad); }
+.pill.draft { background: var(--warn-soft); color: var(--warn); }
+.pill.sent { background: var(--accent-soft); color: var(--accent); }
+.pill.example { background: var(--sunk); color: var(--muted); border: 1px dashed var(--line); }
+.margin-good { color: var(--good); }
+.margin-low { color: var(--warn); }
+.margin-bad { color: var(--bad); }
+.banner { padding: 10px 14px; border-radius: 6px; font-size: 14px; }
+.banner.info { background: var(--accent-soft); color: var(--fg); }
+.banner.err { background: var(--bad-soft); color: var(--bad); }
+.banner.warn { background: var(--warn-soft); color: var(--fg); }
+.suggest { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.suggest button { font-size: 12px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.stat b { display: block; font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; font-weight: 500; }
+.stat span { font-size: 12px; color: var(--muted); }
+pre.mail { white-space: pre-wrap; font-family: var(--mono); font-size: 13px; background: var(--sunk); padding: 12px; border-radius: 6px; margin: 0; overflow-x: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--sunk); font-family: var(--mono); }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="brand">Meyer Beton <small>Tender Desk</small></div>
+    <nav class="tabs" id="tabs">
+      <button data-page="tenders">Tenders</button>
+      <button data-page="prices">Price history</button>
+      <button data-page="suppliers">Suppliers</button>
+      <button data-page="find">Find tenders</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="app">
+  <div class="empty">Loading your tenders...</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+"use strict";
+const S = { tenders: {}, items: {}, suppliers: {}, rfqs: {} };
+let db = null, sample = null, ready = { tenders: false, items: false, suppliers: false, rfqs: false };
+let view = { page: "tenders", tenderId: null };
+let flash = null; // {kind, text}
+let armed = null; // id of a delete button awaiting a second click
+const ui = { showNewTender: false, showNewSupplier: false, priceSearch: "", importing: false, pasteText: "", editingRfq: null };
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (v) => (v == null || v === "" || isNaN(v)) ? "–" : "R " + Number(v).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const qtyFmt = (v) => (v == null || v === "") ? "" : Number(v).toLocaleString("en-ZA", { maximumFractionDigits: 3 });
+const today = () => new Date().toISOString().slice(0, 10);
+const num = (v) => { if (v == null) return null; const n = parseFloat(String(v).replace(/[\sR,]/g, "")); return isFinite(n) ? n : null; };
+const marginPct = (c, s) => (c != null && s) ? ((s - c) / s) * 100 : null;
+const marginCls = (m) => m == null ? "" : m >= 20 ? "margin-good" : m >= 10 ? "margin-low" : "margin-bad";
+const list = (k) => Object.values(S[k]);
+const itemsOf = (tid) => list("items").filter((i) => i.tenderId === tid).sort((a, b) => String(a.itemNo || "").localeCompare(String(b.itemNo || ""), undefined, { numeric: true }) || (a.order || 0) - (b.order || 0));
+
+function setFlash(kind, text) { flash = { kind, text }; render(); }
+
+// ---------- fuzzy matching for price history ----------
+const STOP = new Set(["of", "and", "the", "to", "in", "for", "with", "a", "an", "mm", "type", "x", "supply", "deliver", "install", "including", "incl", "complete", "&"]);
+function tokens(s) {
+  return new Set(String(s || "").toLowerCase().replace(/(\d)\s*mm\b/g, "$1mm").split(/[^a-z0-9.]+/).filter((t) => t && !STOP.has(t)));
+}
+function similarity(a, b) {
+  const A = tokens(a), B = tokens(b);
+  if (!A.size || !B.size) return 0;
+  let inter = 0; A.forEach((t) => { if (B.has(t)) inter++; });
+  return Math.round((2 * inter / (A.size + B.size)) * 100);
+}
+function similarPriced(desc, excludeId, min = 45) {
+  return list("items")
+    .filter((i) => i.id !== excludeId && (i.cost != null || i.sell != null))
+    .map((i) => ({ i, score: similarity(desc, i.description) }))
+    .filter((m) => m.score >= min)
+    .sort((a, b) => b.score - a.score || (b.i.updated || "").localeCompare(a.i.updated || ""));
+}
+function suggestion(item) {
+  const m = similarPriced(item.description, item.id).slice(0, 5);
+  if (!m.length) return null;
+  const avg = (k) => { const v = m.map((x) => x.i[k]).filter((x) => x != null); return v.length ? v.reduce((p, c) => p + c, 0) / v.length : null; };
+  return { cost: avg("cost"), sell: avg("sell"), n: m.length };
+}
+
+// ---------- BOQ parsing ----------
+function findCols(row) {
+  const cells = row.map((c) => String(c ?? "").trim().toLowerCase());
+  const idx = (re) => cells.findIndex((c) => re.test(c));
+  const desc = idx(/desc|particular|item description|scope/);
+  if (desc < 0) return null;
+  return { desc, unit: idx(/^units?$|^uom|unit of/), qty: idx(/^qty|quant|^q'?ty/), no: idx(/^item|^no\.?$|^ref|^pay ?item|^nr/) };
+}
+function parseRows(rows) {
+  let cols = null, start = 0;
+  for (let r = 0; r < Math.min(rows.length, 40); r++) {
+    const c = findCols(rows[r] || []);
+    if (c) { cols = c; start = r + 1; break; }
+  }
+  if (!cols) return { items: [], warning: "Couldn't find a header row with a Description column." };
+  const items = [];
+  for (let r = start; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const description = String(row[cols.desc] ?? "").trim();
+    if (!description) continue;
+    const unit = cols.unit >= 0 ? String(row[cols.unit] ?? "").trim() : "";
+    const qty = cols.qty >= 0 ? num(row[cols.qty]) : null;
+    if (!unit && qty == null) continue; // section headings, sub-totals
+    if (/^(sub-?total|total|carried forward|brought forward)/i.test(description)) continue;
+    items.push({ itemNo: cols.no >= 0 ? String(row[cols.no] ?? "").trim() : "", description, unit, qty });
+  }
+  return { items, warning: items.length ? null : "Found the header row but no line items with a unit or quantity below it." };
+}
+function parseWorkbook(buf) {
+  const wb = XLSX.read(buf, { type: "array" });
+  let all = [], warnings = [];
+  wb.SheetNames.forEach((name) => {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, blankrows: false, defval: "" });
+    const res = parseRows(rows);
+    all = all.concat(res.items);
+    if (res.warning && wb.SheetNames.length === 1) warnings.push(res.warning);
+  });
+  if (!all.length && !warnings.length) warnings.push("No line items found on any sheet.");
+  return { items: all, warnings };
+}
+async function aiExtract(text) {
+  const prompt = "You are reading a construction Bill of Quantities (BOQ) that was copied out of a PDF or document. " +
+    "Extract every priced line item (skip headings, notes, sub-totals and totals). " +
+    "Reply with only a JSON array of objects: {\"itemNo\": string, \"description\": string, \"unit\": string, \"qty\": number|null}. " +
+    "Example: [{\"itemNo\":\"1.1\",\"description\":\"Precast concrete kerbs type FK\",\"unit\":\"m\",\"qty\":450}]\n\nBOQ text:\n" + text.slice(0, 60000);
+  const out = await sample.json(prompt, { modelTier: "default" });
+  if (!Array.isArray(out)) throw { message: "Claude didn't return a list of items." };
+  return out.filter((r) => r && r.description).map((r) => ({ itemNo: String(r.itemNo ?? ""), description: String(r.description), unit: String(r.unit ?? ""), qty: num(r.qty) }));
+}
+
+// ---------- writes ----------
+const now = () => new Date().toISOString();
+async function write(fn, okText) {
+  try { await fn(); if (okText) setFlash("info", okText); }
+  catch (e) {
+    const msg = e?.code === "invalid_argument" ? "You don't have permission to change this data (view-only access)." :
+      e?.code === "quota_exceeded" ? "Storage is full: " + (e.message || "") : (e?.message || "Something went wrong saving that.");
+    setFlash("err", msg);
+  }
+}
+const col = (name) => db.collection(name);
+async function addItems(tenderId, items) {
+  const base = itemsOf(tenderId).length;
+  for (let k = 0; k < items.length; k++) {
+    const it = items[k];
+    await col("items").add({ tenderId, itemNo: it.itemNo || "", description: it.description, unit: it.unit || "", qty: it.qty, cost: null, sell: null, order: base + k, updated: now() });
+  }
+}
+
+// ---------- RFQ ----------
+function supplierKeywords(s) { return String(s.categories || "").split(",").map((k) => k.trim().toLowerCase()).filter(Boolean); }
+function matchItems(s, items) {
+  const kw = supplierKeywords(s);
+  if (!kw.length) return items;
+  return items.filter((i) => { const h = (i.description + " " + (i.category || "")).toLowerCase(); return kw.some((k) => h.includes(k)); });
+}
+function buildEmail(t, s, items) {
+  const pad = (v, n) => String(v ?? "").slice(0, n - 1).padEnd(n);
+  const lines = [
+    `Hi ${s.name},`, "",
+    `We're pricing the following tender (${t.title}${t.buyer ? ", client: " + t.buyer : ""}${t.closing ? ", closing " + t.closing : ""}) and would appreciate your best pricing on the items below.`, "",
+    pad("Item", 8) + pad("Description", 56) + pad("Unit", 8) + "Qty".padStart(10),
+    "-".repeat(82),
+    ...items.map((i) => pad(i.itemNo, 8) + pad(i.description, 56) + pad(i.unit, 8) + qtyFmt(i.qty).padStart(10)),
+    "", "Please send us your rates per item, along with your lead time and validity period.", "", "Kind regards,", "Meyer Beton",
+  ];
+  return { subject: `Request for Quote: ${t.title}`, body: lines.join("\n") };
+}
+async function generateRfqs(t) {
+  const items = itemsOf(t.id);
+  if (!items.length) return setFlash("err", "This tender has no line items yet. Import a BOQ first.");
+  const sups = list("suppliers");
+  if (!sups.length) return setFlash("err", "Add suppliers first, on the Suppliers tab.");
+  const existing = new Set(list("rfqs").filter((r) => r.tenderId === t.id && r.status === "draft").map((r) => r.supplierId));
+  let made = 0, skipped = 0;
+  await write(async () => {
+    for (const s of sups) {
+      const m = matchItems(s, items);
+      if (!m.length) continue;
+      if (existing.has(s.id)) { skipped++; continue; }
+      const { subject, body } = buildEmail(t, s, m);
+      await col("rfqs").add({ tenderId: t.id, supplierId: s.id, subject, body, itemCount: m.length, status: "draft", created: now(), sentAt: null });
+      made++;
+    }
+  });
+  setFlash(made ? "info" : "warn", made ? `Drafted ${made} RFQ email(s)${skipped ? `, skipped ${skipped} supplier(s) that already have an unsent draft` : ""}.` :
+    skipped ? "Every matching supplier already has an unsent draft for this tender." : "No supplier's categories matched these line items. Check the categories on the Suppliers tab.");
+}
+async function copy(text, btn) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; setTimeout(() => (btn.textContent = btn.dataset.label), 1500); }
+  catch { setFlash("warn", "Couldn't copy automatically. Select the text in the email box and copy it by hand."); }
+}
+
+// ---------- rendering ----------
+function render() {
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-current", (view.page === b.dataset.page || (view.page === "tender" && b.dataset.page === "tenders")) ? "page" : "false"));
+  const app = $("#app");
+  if (!db) { app.innerHTML = `<div class="panel"><h2>Storage isn't available here</h2><p class="muted">This page saves tenders, prices and suppliers in Claude's artifact storage. Open it on claude.ai while signed in to use it.</p></div>`; return; }
+  const loading = Object.values(ready).some((r) => !r);
+  let html = flash ? `<div class="banner ${flash.kind}" role="status">${esc(flash.text)}</div>` : "";
+  if (loading) html += `<div class="empty">Loading your tenders...</div>`;
+  else if (view.page === "tenders") html += renderTenders();
+  else if (view.page === "tender") html += renderTender();
+  else if (view.page === "prices") html += renderPrices();
+  else if (view.page === "suppliers") html += renderSuppliers();
+  else if (view.page === "find") html += renderFind();
+  // Keep whatever the person is typing when a save elsewhere re-renders the page.
+  const act = document.activeElement, focusId = act?.id, typed = act && /INPUT|TEXTAREA/.test(act.tagName) && act.type !== "file" ? act.value : null;
+  let selStart = null; try { selStart = act?.selectionStart; } catch {}
+  app.innerHTML = html;
+  if (focusId) { const el = document.getElementById(focusId); if (el) { if (typed != null) el.value = typed; el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch {} } }
+}
+
+function tenderTotals(tid) {
+  let cost = 0, sell = 0, priced = 0; const items = itemsOf(tid);
+  items.forEach((i) => { if (i.qty != null && i.cost != null) cost += i.qty * i.cost; if (i.qty != null && i.sell != null) { sell += i.qty * i.sell; priced++; } });
+  return { cost, sell, priced, count: items.length };
+}
+const isExample = (t) => /^example/i.test(t.title || "");
+
+function renderTenders() {
+  const ts = list("tenders").sort((a, b) => (a.closing || "9999").localeCompare(b.closing || "9999"));
+  const open = ts.filter((t) => t.status === "open").length, won = ts.filter((t) => t.status === "won").length, decided = ts.filter((t) => t.status === "won" || t.status === "lost").length;
+  return `
+  <div class="row between"><div class="stack" style="gap:4px"><h1>Tenders</h1><p class="lede">Every tender we're pricing or have priced. Open one to import its BOQ, enter cost and selling prices, and send RFQs to suppliers.</p></div>
+    <button class="btn" data-act="toggle-new-tender">${ui.showNewTender ? "Cancel" : "+ Add tender"}</button></div>
+  ${ui.showNewTender ? `<form class="panel" id="new-tender"><div class="form">
+    <label class="wide">Title<input id="nt-title" name="title" required placeholder="e.g. Supply of precast concrete kerbs – Ward 12 upgrade"></label>
+    <label>Client / buyer<input id="nt-buyer" name="buyer" placeholder="e.g. City of Tshwane"></label>
+    <label>Tender number<input id="nt-ref" name="ref" placeholder="e.g. CoT/RT/2026/041"></label>
+    <label>Closing date<input id="nt-closing" name="closing" type="date"></label>
+    <label>Link<input id="nt-url" name="url" type="url" placeholder="https://..."></label>
+  </div><div class="row"><button class="btn" type="submit">Save tender</button></div></form>` : ""}
+  <div class="stats">
+    <div class="stat"><b>${open}</b><span>open</span></div>
+    <div class="stat"><b>${ts.filter((t) => t.status === "submitted").length}</b><span>submitted, awaiting result</span></div>
+    <div class="stat"><b>${decided ? Math.round(won / decided * 100) + "%" : "–"}</b><span>win rate (${won} of ${decided} decided)</span></div>
+    <div class="stat"><b>${list("items").filter((i) => i.sell != null).length}</b><span>priced line items on record</span></div>
+  </div>
+  ${ts.length ? `<div class="tablebox"><table><thead><tr><th>Tender</th><th>Client</th><th>Closes</th><th>Status</th><th class="n">Items</th><th class="n">Quote value</th></tr></thead><tbody>
+  ${ts.map((t) => { const tt = tenderTotals(t.id); const late = t.status === "open" && t.closing && t.closing < today();
+    return `<tr class="click" data-open="${t.id}"><td>${esc(t.title)}${isExample(t) ? ` <span class="pill example">example</span>` : ""}${t.ref ? `<div class="small muted">${esc(t.ref)}</div>` : ""}</td><td>${esc(t.buyer || "–")}</td>
+    <td class="${late ? "margin-bad" : ""}" style="white-space:nowrap">${esc(t.closing || "–")}${late ? " (passed)" : ""}</td><td><span class="pill ${t.status}">${t.status}</span></td>
+    <td class="n">${tt.count}</td><td class="n">${tt.sell ? money(tt.sell) : "–"}</td></tr>`; }).join("")}
+  </tbody></table></div>` : `<div class="panel empty">No tenders yet. Click <b>Add tender</b> to enter one, or look for new ones on the <button class="link" data-page-go="find">Find tenders</button> tab.</div>`}`;
+}
+
+function renderTender() {
+  const t = S.tenders[view.tenderId];
+  if (!t) return `<div class="panel empty">That tender no longer exists. <button class="link" data-page-go="tenders">Back to tenders</button></div>`;
+  const items = itemsOf(t.id), tt = tenderTotals(t.id), m = marginPct(tt.cost, tt.sell);
+  const rfqs = list("rfqs").filter((r) => r.tenderId === t.id).sort((a, b) => (a.created || "").localeCompare(b.created || ""));
+  return `
+  <div><button class="link" data-page-go="tenders">&larr; All tenders</button></div>
+  <div class="row between" style="align-items:flex-start">
+    <div class="stack" style="gap:4px; min-width:0; flex:1 1 320px"><h1>${esc(t.title)}</h1>
+      <p class="muted">${esc(t.buyer || "No client set")}${t.ref ? " · " + esc(t.ref) : ""}${t.closing ? " · closes " + esc(t.closing) : ""}${t.url ? ` · <a href="${esc(t.url)}" target="_blank" rel="noopener">tender documents</a>` : ""}</p></div>
+    <div class="row"><label class="small muted" for="t-status">Status</label>
+      <select id="t-status" data-tender-status="${t.id}">${["open", "submitted", "won", "lost", "closed"].map((s) => `<option ${s === t.status ? "selected" : ""}>${s}</option>`).join("")}</select>
+      <button class="btn danger sm ${armed === "t" + t.id ? "armed" : ""}" data-del-tender="${t.id}">${armed === "t" + t.id ? "Click again to delete" : "Delete tender"}</button></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>${tt.count}</b><span>line items (${tt.priced} priced)</span></div>
+    <div class="stat"><b>${money(tt.cost)}</b><span>total cost</span></div>
+    <div class="stat"><b>${money(tt.sell)}</b><span>total quote</span></div>
+    <div class="stat"><b class="${marginCls(m)}">${m == null ? "–" : m.toFixed(1) + "%"}</b><span>margin on quote</span></div>
+  </div>
+
+  <section class="panel">
+    <div class="row between"><h2>1 · Import the BOQ</h2><span class="small muted">Excel (.xlsx, .xls, .csv) or text copied from a PDF</span></div>
+    <div class="row">
+      <label class="btn ghost" for="boq-file">Choose BOQ file</label><input id="boq-file" type="file" accept=".xlsx,.xls,.csv" hidden>
+      <span class="small muted">or paste below: rows copied from Excel are read directly; text copied from a PDF is read by Claude.</span>
+    </div>
+    <textarea id="boq-paste" rows="4" placeholder="Paste BOQ rows or PDF text here...">${esc(ui.pasteText)}</textarea>
+    <div class="row"><button class="btn" data-act="import-paste" ${ui.importing ? "disabled" : ""}>${ui.importing ? "Reading BOQ..." : "Import pasted BOQ"}</button>
+      <button class="btn ghost" data-act="add-item">+ Add a line by hand</button></div>
+  </section>
+
+  <section class="stack">
+    <div class="row between"><h2>2 · Price the line items</h2><span class="small muted">Cost = what we pay per unit · Selling = what we quote per unit. Changes save when you leave the box.</span></div>
+    ${items.length ? `<div class="tablebox"><table><thead><tr><th>Item</th><th>Description</th><th>Unit</th><th class="n">Qty</th><th class="n">Cost / unit</th><th class="n">Selling / unit</th><th class="n">Margin</th><th class="n">Line total</th><th></th></tr></thead><tbody>
+    ${items.map((i) => { const sg = (i.cost == null || i.sell == null) ? suggestion(i) : null; const mm = marginPct(i.cost, i.sell);
+      return `<tr><td><input id="no-${i.id}" data-field="itemNo" data-item="${i.id}" value="${esc(i.itemNo)}" style="width:64px"></td>
+      <td style="min-width:240px"><input id="de-${i.id}" data-field="description" data-item="${i.id}" value="${esc(i.description)}" style="width:100%">
+        ${sg ? `<div class="suggest">History (${sg.n} similar): cost ${money(sg.cost)}, selling ${money(sg.sell)} · <button class="link" data-apply="${i.id}">use these</button></div>` : ""}</td>
+      <td><input id="un-${i.id}" data-field="unit" data-item="${i.id}" value="${esc(i.unit)}" style="width:56px"></td>
+      <td class="n"><input id="qt-${i.id}" class="num" data-field="qty" data-item="${i.id}" value="${i.qty ?? ""}" inputmode="decimal" style="width:80px"></td>
+      <td class="n"><input id="co-${i.id}" class="num" data-field="cost" data-item="${i.id}" value="${i.cost ?? ""}" inputmode="decimal" placeholder="0.00"></td>
+      <td class="n"><input id="se-${i.id}" class="num" data-field="sell" data-item="${i.id}" value="${i.sell ?? ""}" inputmode="decimal" placeholder="0.00"></td>
+      <td class="n ${marginCls(mm)}">${mm == null ? "–" : mm.toFixed(1) + "%"}</td>
+      <td class="n">${i.qty != null && i.sell != null ? money(i.qty * i.sell) : "–"}</td>
+      <td><button class="btn danger sm ${armed === "i" + i.id ? "armed" : ""}" data-del-item="${i.id}" aria-label="Delete line">${armed === "i" + i.id ? "Delete?" : "×"}</button></td></tr>`; }).join("")}
+    </tbody></table></div>
+    <div class="row">${items.some((i) => (i.cost == null || i.sell == null) && suggestion(i)) ? `<button class="btn ghost" data-act="apply-all">Fill all blanks from price history</button>` : ""}</div>` :
+    `<div class="panel empty">No line items yet. Import the BOQ above.</div>`}
+  </section>
+
+  <section class="panel">
+    <div class="row between"><h2>3 · Ask suppliers for quotes</h2>
+      <button class="btn" data-act="gen-rfq">Draft RFQ emails</button></div>
+    <p class="small muted">Each supplier gets only the items matching their categories (set on the Suppliers tab; a supplier with no categories gets everything). Open a draft in your email app, or copy it, then mark it sent.</p>
+    ${rfqs.length ? rfqs.map((r) => { const s = S.suppliers[r.supplierId] || { name: "(deleted supplier)", email: "" }; const editing = ui.editingRfq === r.id;
+      return `<div class="panel" style="background:var(--bg)">
+        <div class="row between"><div class="row"><b>${esc(s.name)}</b><span class="pill ${r.status}">${r.status === "sent" ? "sent " + esc((r.sentAt || "").slice(0, 10)) : "draft"}</span><span class="small muted">${r.itemCount || 0} item(s)</span></div>
+        <div class="row">
+          ${r.status === "draft" ? `<a class="btn sm" style="text-decoration:none" href="mailto:${encodeURIComponent(s.email)}?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(r.body)}">Open in email app</a>
+          <button class="btn ghost sm" data-copy="${r.id}" data-label="Copy email">Copy email</button>
+          <button class="btn ghost sm" data-edit-rfq="${r.id}">${editing ? "Done editing" : "Edit"}</button>
+          <button class="btn ghost sm" data-sent="${r.id}">Mark sent</button>` : ""}
+          <button class="btn danger sm ${armed === "r" + r.id ? "armed" : ""}" data-del-rfq="${r.id}">${armed === "r" + r.id ? "Click again" : "Delete"}</button></div></div>
+        <div class="small">To: <span style="user-select:all; font-family:var(--mono)">${esc(s.email)}</span> · Subject: ${esc(r.subject)}</div>
+        ${editing ? `<textarea id="rb-${r.id}" data-rfq-body="${r.id}" rows="14" style="font-family:var(--mono); font-size:13px">${esc(r.body)}</textarea>` : `<pre class="mail">${esc(r.body)}</pre>`}
+      </div>`; }).join("") : `<p class="muted">No RFQ drafts yet.</p>`}
+  </section>`;
+}
+
+function renderPrices() {
+  const q = ui.priceSearch.trim();
+  let rows = list("items").filter((i) => i.cost != null || i.sell != null);
+  rows = q ? rows.map((i) => ({ i, s: similarity(q, i.description) + (i.description.toLowerCase().includes(q.toLowerCase()) ? 50 : 0) })).filter((x) => x.s >= 35).sort((a, b) => b.s - a.s).map((x) => x.i)
+           : rows.sort((a, b) => (b.updated || "").localeCompare(a.updated || ""));
+  return `
+  <div class="stack" style="gap:4px"><h1>Price history</h1>
+  <p class="lede">Every cost and selling price entered on any tender, with the margin and how that tender turned out. Search finds similar wording, so "crushed stone 19mm" also finds "19mm crushed stone aggregate".</p></div>
+  <div class="row"><input id="price-search" type="search" placeholder="Search item description..." value="${esc(ui.priceSearch)}" style="flex:1 1 260px; max-width:420px"></div>
+  ${rows.length ? `<div class="tablebox"><table><thead><tr><th>Description</th><th>Unit</th><th class="n">Cost</th><th class="n">Selling</th><th class="n">Margin</th><th>Tender</th><th>Outcome</th><th>Updated</th></tr></thead><tbody>
+  ${rows.map((i) => { const t = S.tenders[i.tenderId] || {}; const m = marginPct(i.cost, i.sell);
+    return `<tr class="click" data-open="${i.tenderId}"><td>${esc(i.description)}</td><td>${esc(i.unit)}</td><td class="n">${money(i.cost)}</td><td class="n">${money(i.sell)}</td>
+    <td class="n ${marginCls(m)}">${m == null ? "–" : m.toFixed(1) + "%"}</td><td>${esc(t.title || "–")}</td><td>${t.status ? `<span class="pill ${t.status}">${t.status}</span>` : ""}</td><td style="white-space:nowrap">${esc((i.updated || "").slice(0, 10))}</td></tr>`; }).join("")}
+  </tbody></table></div>` : `<div class="panel empty">${q ? "Nothing similar has been priced yet." : "No prices on record yet. Enter cost and selling prices on a tender's line items and they appear here."}</div>`}`;
+}
+
+function renderSuppliers() {
+  const sups = list("suppliers").sort((a, b) => a.name.localeCompare(b.name));
+  return `
+  <div class="row between"><div class="stack" style="gap:4px"><h1>Suppliers</h1>
+    <p class="lede">Categories are comma-separated keywords (e.g. <span class="chip">kerb, paving, block</span>). A BOQ line goes to a supplier when one of their keywords appears in its description. Leave categories blank for a supplier who should get every line.</p></div>
+    <button class="btn" data-act="toggle-new-supplier">${ui.showNewSupplier ? "Cancel" : "+ Add supplier"}</button></div>
+  ${ui.showNewSupplier ? `<form class="panel" id="new-supplier"><div class="form">
+    <label>Name<input id="ns-name" name="name" required></label>
+    <label>Email<input id="ns-email" name="email" type="email" required></label>
+    <label>Phone<input id="ns-phone" name="phone"></label>
+    <label class="wide">Categories<input id="ns-cats" name="categories" placeholder="cement, aggregate, stone"></label>
+  </div><div class="row"><button class="btn" type="submit">Save supplier</button></div></form>` : ""}
+  ${sups.length ? `<div class="tablebox"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Categories</th><th></th></tr></thead><tbody>
+  ${sups.map((s) => `<tr><td><input id="sn-${s.id}" data-sup="${s.id}" data-sfield="name" value="${esc(s.name)}"></td><td><input id="se-${s.id}" data-sup="${s.id}" data-sfield="email" value="${esc(s.email)}" style="width:220px"></td>
+    <td><input id="sp-${s.id}" data-sup="${s.id}" data-sfield="phone" value="${esc(s.phone || "")}" style="width:130px"></td>
+    <td><input id="sc-${s.id}" data-sup="${s.id}" data-sfield="categories" value="${esc(s.categories || "")}" style="width:240px" placeholder="(gets every line)"></td>
+    <td><button class="btn danger sm ${armed === "s" + s.id ? "armed" : ""}" data-del-sup="${s.id}">${armed === "s" + s.id ? "Click again" : "Remove"}</button></td></tr>`).join("")}
+  </tbody></table></div>` : `<div class="panel empty">No suppliers yet. Add the companies you get quotes from.</div>`}`;
+}
+
+const KEYWORDS = ["precast concrete", "concrete kerbs", "paving", "culverts", "manholes", "stormwater", "concrete pipes", "palisade", "retaining walls"];
+function renderFind() {
+  return `
+  <div class="stack" style="gap:4px"><h1>Find tenders</h1>
+  <p class="lede">This page can't reach the government eTenders portal directly from inside Claude, so new tenders are added by hand. Use these searches to find ones that fit Meyer Beton, then add them on the Tenders tab. The full app in the GitHub repo fetches and filters them automatically once it's hosted.</p></div>
+  <div class="split">
+    <div class="panel"><span class="eyebrow">Search the eTenders portal</span>
+      <p><a href="https://www.etenders.gov.za/" target="_blank" rel="noopener">Open the eTenders portal</a></p>
+      <p class="small muted">Filter by category "Civil engineering" or "Construction" and search for:</p>
+      <div class="chips">${KEYWORDS.map((k) => `<span class="chip">${esc(k)}</span>`).join("")}</div></div>
+    <div class="panel"><span class="eyebrow">Ask Claude</span>
+      <p class="small">In a Claude chat with web search on, try:</p>
+      <pre class="mail">Find open South African public tenders closing in the next 30 days for precast concrete products (kerbs, paving, culverts, manholes, stormwater pipes). List title, buyer, tender number, closing date and link.</pre>
+      <div><button class="btn ghost sm" data-copy-text="find" data-label="Copy prompt">Copy prompt</button></div></div>
+  </div>`;
+}
+
+// ---------- events ----------
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button, tr[data-open], a");
+  if (!b) return;
+  const d = b.dataset;
+  if (b.closest("#tabs")) { view = { page: d.page }; flash = null; armed = null; render(); return; }
+  if (d.pageGo) { view = { page: d.pageGo }; flash = null; render(); return; }
+  if (d.open && !e.target.closest("input,select,button")) { view = { page: "tender", tenderId: d.open }; flash = null; armed = null; ui.pasteText = ""; render(); window.scrollTo(0, 0); return; }
+  const arm = (key, fn) => { if (armed === key) { armed = null; fn(); } else { armed = key; render(); } };
+  if (d.act === "toggle-new-tender") { ui.showNewTender = !ui.showNewTender; render(); }
+  else if (d.act === "toggle-new-supplier") { ui.showNewSupplier = !ui.showNewSupplier; render(); }
+  else if (d.delTender) arm("t" + d.delTender, () => write(async () => {
+    const tid = d.delTender;
+    for (const i of itemsOf(tid)) await col("items").doc(i.id).delete();
+    for (const r of list("rfqs").filter((r) => r.tenderId === tid)) await col("rfqs").doc(r.id).delete();
+    await col("tenders").doc(tid).delete(); view = { page: "tenders" };
+  }, "Tender deleted."));
+  else if (d.delItem) arm("i" + d.delItem, () => write(() => col("items").doc(d.delItem).delete()));
+  else if (d.delRfq) arm("r" + d.delRfq, () => write(() => col("rfqs").doc(d.delRfq).delete()));
+  else if (d.delSup) arm("s" + d.delSup, () => write(() => col("suppliers").doc(d.delSup).delete(), "Supplier removed."));
+  else if (d.apply) { const i = S.items[d.apply], sg = suggestion(i); if (sg) write(() => col("items").doc(i.id).update({ cost: i.cost ?? round2(sg.cost), sell: i.sell ?? round2(sg.sell), updated: now() })); }
+  else if (d.act === "apply-all") write(async () => { let n = 0; for (const i of itemsOf(view.tenderId)) { if (i.cost != null && i.sell != null) continue; const sg = suggestion(i); if (!sg) continue; await col("items").doc(i.id).update({ cost: i.cost ?? round2(sg.cost), sell: i.sell ?? round2(sg.sell), updated: now() }); n++; } setFlash("info", `Filled ${n} line(s) from price history. Check them before quoting.`); });
+  else if (d.act === "add-item") write(() => addItems(view.tenderId, [{ itemNo: "", description: "New line item", unit: "", qty: null }]));
+  else if (d.act === "gen-rfq") generateRfqs(S.tenders[view.tenderId]);
+  else if (d.copy) copy(S.rfqs[d.copy].body, b);
+  else if (d.copyText) copy(b.closest(".panel").querySelector("pre").textContent, b);
+  else if (d.editRfq) { ui.editingRfq = ui.editingRfq === d.editRfq ? null : d.editRfq; render(); }
+  else if (d.sent) write(() => col("rfqs").doc(d.sent).update({ status: "sent", sentAt: now() }), "Marked as sent.");
+  else if (d.act === "import-paste") importPaste();
+});
+const round2 = (v) => v == null ? null : Math.round(v * 100) / 100;
+
+document.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(e.target).entries());
+  if (e.target.id === "new-tender") write(async () => {
+    const ref = await col("tenders").add({ title: f.title.trim(), buyer: f.buyer.trim(), ref: f.ref.trim(), closing: f.closing, url: f.url.trim(), status: "open", created: now() });
+    ui.showNewTender = false; view = { page: "tender", tenderId: ref.id };
+  }, "Tender added. Now import its BOQ.");
+  if (e.target.id === "new-supplier") write(async () => {
+    await col("suppliers").add({ name: f.name.trim(), email: f.email.trim(), phone: f.phone.trim(), categories: f.categories.trim(), created: now() });
+    ui.showNewSupplier = false;
+  }, "Supplier added.");
+});
+
+document.addEventListener("change", async (e) => {
+  const el = e.target, d = el.dataset;
+  if (d.item) {
+    const numeric = ["qty", "cost", "sell"].includes(d.field);
+    const v = numeric ? num(el.value) : el.value.trim();
+    if (numeric && el.value.trim() && v == null) { setFlash("err", `"${el.value}" isn't a number.`); return; }
+    if (S.items[d.item][d.field] === v) return;
+    write(() => col("items").doc(d.item).update({ [d.field]: v, updated: now() }));
+  } else if (d.sup) {
+    write(() => col("suppliers").doc(d.sup).update({ [d.sfield]: el.value.trim() }));
+  } else if (d.tenderStatus) {
+    write(() => col("tenders").doc(d.tenderStatus).update({ status: el.value }), `Status set to ${el.value}.`);
+  } else if (d.rfqBody) {
+    write(() => col("rfqs").doc(d.rfqBody).update({ body: el.value }));
+  } else if (el.id === "boq-file" && el.files[0]) {
+    const file = el.files[0];
+    try {
+      const { items, warnings } = parseWorkbook(await file.arrayBuffer());
+      if (!items.length) return setFlash("err", `Couldn't read line items from ${file.name}: ${warnings.join(" ")} Try copying the rows and pasting them instead.`);
+      await write(() => addItems(view.tenderId, items), `Imported ${items.length} line items from ${file.name}.`);
+    } catch (err) { setFlash("err", `Couldn't open ${file.name}. Save it as .xlsx and try again.`); }
+  }
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id === "price-search") { ui.priceSearch = e.target.value; render(); }
+  if (e.target.id === "boq-paste") ui.pasteText = e.target.value;
+});
+
+async function importPaste() {
+  const text = ui.pasteText.trim();
+  if (!text) return setFlash("warn", "Paste some BOQ rows or text first.");
+  const tid = view.tenderId;
+  if (text.includes("\t")) {
+    const res = parseRows(text.split(/\r?\n/).map((l) => l.split("\t")));
+    if (res.items.length) { ui.pasteText = ""; return write(() => addItems(tid, res.items), `Imported ${res.items.length} line items.`); }
+  }
+  if (!sample) return setFlash("err", "Reading free text needs Claude, which isn't available in this view. Paste rows copied from Excel (with a Description header) instead.");
+  ui.importing = true; flash = null; render();
+  try {
+    const items = await aiExtract(text);
+    ui.importing = false;
+    if (!items.length) return setFlash("warn", "Claude didn't find any line items in that text.");
+    ui.pasteText = "";
+    await write(() => addItems(tid, items), `Claude read ${items.length} line items. Check quantities and units against the original BOQ.`);
+  } catch (err) {
+    ui.importing = false;
+    setFlash("err", err?.code === "not_granted" ? "Claude wasn't allowed to read the BOQ. Allow it in the artifact's Permissions menu and try again." :
+      err?.code === "rate_limited" ? "Too many requests just now. Wait a minute and try again." : "Claude couldn't read that text: " + (err?.message || "unknown error"));
+  }
+}
+
+// ---------- boot ----------
+(async () => {
+  try { db = await window.claude?.use?.("db"); } catch { db = null; }
+  try { sample = await window.claude?.use?.("sample"); } catch { sample = null; }
+  if (!db) { render(); return; }
+  for (const name of Object.keys(S)) {
+    db.collection(name).onSnapshot((snap) => {
+      const m = {}; snap.docs.forEach((doc) => { m[doc.id] = { id: doc.id, ...doc.data() }; });
+      S[name] = m; ready[name] = true; render();
+    }, (err) => setFlash("err", "Lost the connection to storage. Reload the page. (" + (err?.code || "error") + ")"));
+  }
+  render();
+})();
+</script>
