@@ -1,3 +1,25 @@
+# Testing on your own PC (easiest)
+
+1. Install **Docker Desktop** (https://www.docker.com/products/docker-desktop/) and start it.
+2. Download the code: on GitHub, switch to branch `claude/tender-management-automation-rwcp0j`,
+   then Code -> Download ZIP, and unzip it (or `git clone` + `git checkout` that branch).
+3. Open a terminal (PowerShell on Windows) in the unzipped folder and run:
+
+   ```bash
+   cp .env.example .env        # PowerShell: copy .env.example .env
+   docker compose -f docker-compose.yml -f docker-compose.http.yml up -d --build
+   ```
+
+4. Open http://localhost in your browser. The first build takes a few minutes.
+
+To try the full flow: add a few suppliers (with categories such as `kerb, concrete`,
+`stone, aggregate`, `steel`), add a tender manually, upload `samples/sample_boq.xlsx`
+on its BOQ tab, enter some prices, and generate RFQ drafts.
+
+Stop it with `docker compose down` (your data is kept). If port 80 is already
+in use on your PC, change `"80:80"` in `docker-compose.http.yml` to `"8080:80"`
+and use http://localhost:8080 instead.
+
 # Deploying to a VPS with Docker
 
 This gets the app running on a VPS you control, with real outbound internet
@@ -26,7 +48,7 @@ sudo usermod -aG docker $USER
 ```bash
 git clone https://github.com/hugardmoolman1-glitch/Meyer-Beton-Tender-APP.git
 cd Meyer-Beton-Tender-APP
-git checkout claude/tender-management-automation-74jahc
+git checkout claude/tender-management-automation-rwcp0j
 ```
 
 ## 4. Configure
