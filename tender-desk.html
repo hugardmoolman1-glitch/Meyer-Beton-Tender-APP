@@ -131,6 +131,8 @@ pre.mail { white-space: pre-wrap; font-family: var(--mono); font-size: 13px; bac
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script>
 "use strict";
 const S = { tenders: {}, items: {}, suppliers: {}, rfqs: {} };
@@ -138,14 +140,25 @@ let db = null, sample = null, ready = { tenders: false, items: false, suppliers:
 let view = { page: "tenders", tenderId: null };
 let flash = null; // {kind, text}
 let armed = null; // id of a delete button awaiting a second click
-const ui = { showNewTender: false, showNewSupplier: false, priceSearch: "", importing: false, pasteText: "", editingRfq: null };
+const ui = { showNewTender: false, showNewSupplier: false, priceSearch: "", importing: false, pasteText: "", editingRfq: null, rateAs: "sell", bulkStatus: "won", bulkRateAs: "sell", bulkBusy: false, bulkLog: [] };
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (v) => (v == null || v === "" || isNaN(v)) ? "–" : "R " + Number(v).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const qtyFmt = (v) => (v == null || v === "") ? "" : Number(v).toLocaleString("en-ZA", { maximumFractionDigits: 3 });
 const today = () => new Date().toISOString().slice(0, 10);
-const num = (v) => { if (v == null) return null; const n = parseFloat(String(v).replace(/[\sR,]/g, "")); return isFinite(n) ? n : null; };
+// Reads numbers as South African BOQs write them: "R 1 450,00", "1,450.00", "138,50", "1 200".
+function num(v) {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") return isFinite(v) ? v : null;
+  let t = String(v).replace(/[R\s\u00a0']/g, "");
+  if (!/\d/.test(t)) return null;
+  const lc = t.lastIndexOf(","), ld = t.lastIndexOf(".");
+  if (lc >= 0 && ld >= 0) t = lc > ld ? t.replace(/\./g, "").replace(",", ".") : t.replace(/,/g, "");
+  else if (lc >= 0) t = /,\d{1,2}$/.test(t) && t.split(",").length === 2 ? t.replace(",", ".") : t.replace(/,/g, "");
+  const n = parseFloat(t.replace(/[^0-9.\-]/g, ""));
+  return isFinite(n) ? n : null;
+}
 const marginPct = (c, s) => (c != null && s) ? ((s - c) / s) * 100 : null;
 const marginCls = (m) => m == null ? "" : m >= 20 ? "margin-good" : m >= 10 ? "margin-low" : "margin-bad";
 const list = (k) => Object.values(S[k]);
@@ -184,7 +197,8 @@ function findCols(row) {
   const idx = (re) => cells.findIndex((c) => re.test(c));
   const desc = idx(/desc|particular|item description|scope/);
   if (desc < 0) return null;
-  return { desc, unit: idx(/^units?$|^uom|unit of/), qty: idx(/^qty|quant|^q'?ty/), no: idx(/^item|^no\.?$|^ref|^pay ?item|^nr/) };
+  return { desc, unit: idx(/^units?$|^uom|unit of/), qty: idx(/^qty|quant|^q'?ty/), no: idx(/^item|^no\.?$|^ref|^pay ?item|^nr/),
+    rate: idx(/^rate|unit ?rate|^price|tendered rate|^r ?\/ ?unit/), amount: idx(/^amount|^total|^value|^sum/) };
 }
 function parseRows(rows) {
   let cols = null, start = 0;
@@ -202,7 +216,10 @@ function parseRows(rows) {
     const qty = cols.qty >= 0 ? num(row[cols.qty]) : null;
     if (!unit && qty == null) continue; // section headings, sub-totals
     if (/^(sub-?total|total|carried forward|brought forward)/i.test(description)) continue;
-    items.push({ itemNo: cols.no >= 0 ? String(row[cols.no] ?? "").trim() : "", description, unit, qty });
+    let rate = cols.rate >= 0 ? num(row[cols.rate]) : null;
+    const amount = cols.amount >= 0 ? num(row[cols.amount]) : null;
+    if (rate == null && amount != null && qty) rate = Math.round(amount / qty * 100) / 100;
+    items.push({ itemNo: cols.no >= 0 ? String(row[cols.no] ?? "").trim() : "", description, unit, qty, rate });
   }
   return { items, warning: items.length ? null : "Found the header row but no line items with a unit or quantity below it." };
 }
@@ -218,15 +235,50 @@ function parseWorkbook(buf) {
   if (!all.length && !warnings.length) warnings.push("No line items found on any sheet.");
   return { items: all, warnings };
 }
-async function aiExtract(text) {
-  const prompt = "You are reading a construction Bill of Quantities (BOQ) that was copied out of a PDF or document. " +
-    "Extract every priced line item (skip headings, notes, sub-totals and totals). " +
-    "Reply with only a JSON array of objects: {\"itemNo\": string, \"description\": string, \"unit\": string, \"qty\": number|null}. " +
-    "Example: [{\"itemNo\":\"1.1\",\"description\":\"Precast concrete kerbs type FK\",\"unit\":\"m\",\"qty\":450}]\n\nBOQ text:\n" + text.slice(0, 60000);
+async function aiExtractChunk(text) {
+  const prompt = "You are reading part of a South African construction Bill of Quantities (BOQ) taken from a PDF. " +
+    "Extract every line item that has a unit or quantity (skip headings, notes, preliminaries text, sub-totals and totals). " +
+    "If a rate (price per unit) is filled in, include it; if only the amount is given, rate = amount / qty. Numbers may use a space for thousands and a comma for decimals (\"1 450,00\" = 1450). " +
+    "Use null where a value is blank. Reply with only a JSON array of objects: {\"itemNo\": string, \"description\": string, \"unit\": string, \"qty\": number|null, \"rate\": number|null}. " +
+    "Example: [{\"itemNo\":\"1.1\",\"description\":\"Precast concrete kerbs type FK\",\"unit\":\"m\",\"qty\":450,\"rate\":138.5}]. " +
+    "Reply [] if there are no line items.\n\nBOQ text:\n" + text;
   const out = await sample.json(prompt, { modelTier: "default" });
   if (!Array.isArray(out)) throw { message: "Claude didn't return a list of items." };
-  return out.filter((r) => r && r.description).map((r) => ({ itemNo: String(r.itemNo ?? ""), description: String(r.description), unit: String(r.unit ?? ""), qty: num(r.qty) }));
+  return out.filter((r) => r && r.description).map((r) => ({ itemNo: String(r.itemNo ?? ""), description: String(r.description), unit: String(r.unit ?? ""), qty: num(r.qty), rate: num(r.rate) }));
 }
+// Long BOQs are read in chunks of whole pages so nothing is cut off.
+async function aiExtract(pages, onProgress) {
+  if (typeof pages === "string") pages = [pages];
+  const chunks = []; let cur = "";
+  for (const p of pages) { if (cur && (cur.length + p.length) > 24000) { chunks.push(cur); cur = ""; } cur += p + "\n"; }
+  if (cur.trim()) chunks.push(cur);
+  let all = [];
+  for (let k = 0; k < chunks.length; k++) { onProgress?.(k + 1, chunks.length); all = all.concat(await aiExtractChunk(chunks[k].slice(0, 60000))); }
+  return all;
+}
+async function pdfPages(buf) {
+  if (!window.pdfjsLib) throw { message: "The PDF reader didn't load. Reload the page and try again." };
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
+  const pages = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const tc = await (await pdf.getPage(p)).getTextContent();
+    pages.push(tc.items.map((i) => i.str + (i.hasEOL ? "\n" : " ")).join(""));
+  }
+  return pages;
+}
+// Reads any BOQ file into line items. Excel/CSV is read directly; PDF text goes to Claude.
+async function readBoqFile(file, onProgress) {
+  const buf = await file.arrayBuffer();
+  if (/\.pdf$/i.test(file.name)) {
+    const pages = await pdfPages(buf);
+    if (!pages.join("").trim()) throw { message: `${file.name} has no readable text (it may be a scanned image). Ask the client for the Excel version.` };
+    if (!sample) throw { message: "Reading PDFs needs Claude, which isn't available in this view." };
+    return { items: await aiExtract(pages, onProgress), warnings: [], viaClaude: true };
+  }
+  return parseWorkbook(buf);
+}
+const priceFields = (rate, rateAs) => ({ cost: rateAs === "cost" ? rate ?? null : null, sell: rateAs === "sell" ? rate ?? null : null });
+const rateNote = (items, rateAs) => { const n = items.filter((i) => i.rate != null).length; return rateAs === "ignore" || !n ? "" : ` ${n} had rates, saved as ${rateAs === "sell" ? "selling" : "cost"} prices.`; };
 
 // ---------- writes ----------
 const now = () => new Date().toISOString();
@@ -239,11 +291,11 @@ async function write(fn, okText) {
   }
 }
 const col = (name) => db.collection(name);
-async function addItems(tenderId, items) {
+async function addItems(tenderId, items, rateAs = "ignore") {
   const base = itemsOf(tenderId).length;
   for (let k = 0; k < items.length; k++) {
     const it = items[k];
-    await col("items").add({ tenderId, itemNo: it.itemNo || "", description: it.description, unit: it.unit || "", qty: it.qty, cost: null, sell: null, order: base + k, updated: now() });
+    await col("items").add({ tenderId, itemNo: it.itemNo || "", description: it.description, unit: it.unit || "", qty: it.qty ?? null, ...priceFields(it.rate, rateAs), order: base + k, updated: now() });
   }
 }
 
@@ -367,9 +419,11 @@ function renderTender() {
   </div>
 
   <section class="panel">
-    <div class="row between"><h2>1 · Import the BOQ</h2><span class="small muted">Excel (.xlsx, .xls, .csv) or text copied from a PDF</span></div>
+    <div class="row between"><h2>1 · Import the BOQ</h2><span class="small muted">Excel (.xlsx, .xls, .csv), PDF, or pasted text</span></div>
+    <div class="row"><label class="small muted" for="rate-as">If the BOQ has rates filled in, they are</label>
+      <select id="rate-as">${rateOptions(ui.rateAs)}</select></div>
     <div class="row">
-      <label class="btn ghost" for="boq-file">Choose BOQ file</label><input id="boq-file" type="file" accept=".xlsx,.xls,.csv" hidden>
+      <label class="btn ghost" for="boq-file">${ui.importing ? "Reading BOQ..." : "Choose BOQ file"}</label><input id="boq-file" type="file" accept=".xlsx,.xls,.csv,.pdf" hidden>
       <span class="small muted">or paste below: rows copied from Excel are read directly; text copied from a PDF is read by Claude.</span>
     </div>
     <textarea id="boq-paste" rows="4" placeholder="Paste BOQ rows or PDF text here...">${esc(ui.pasteText)}</textarea>
@@ -415,6 +469,37 @@ function renderTender() {
   </section>`;
 }
 
+function rateOptions(v) {
+  return [["sell", "our selling prices (a BOQ we priced and submitted)"], ["cost", "our cost prices (a supplier's quote)"], ["ignore", "not prices to keep (ignore them)"]]
+    .map(([k, l]) => `<option value="${k}" ${v === k ? "selected" : ""}>${l}</option>`).join("");
+}
+function renderBulk() {
+  return `<section class="panel">
+    <div class="row between"><h2>Load past priced BOQs</h2><span class="small muted">Excel, CSV or PDF · several at once</span></div>
+    <p class="small muted">Each file becomes a tender (named after the file) with its rates saved, so they show up here and as suggestions on new tenders. You can rename the tenders and fill in client details afterwards.</p>
+    <div class="form">
+      <label>The rates in these BOQs are<select id="bulk-rate">${rateOptions(ui.bulkRateAs)}</select></label>
+      <label>These tenders were<select id="bulk-status">${[["won", "won"], ["lost", "lost"], ["submitted", "submitted, result unknown"], ["closed", "closed / not sure"]].map(([k, l]) => `<option value="${k}" ${ui.bulkStatus === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    </div>
+    <div class="row"><label class="btn" for="bulk-files">${ui.bulkBusy ? "Loading..." : "Choose BOQ files"}</label><input id="bulk-files" type="file" accept=".xlsx,.xls,.csv,.pdf" multiple hidden ${ui.bulkBusy ? "disabled" : ""}></div>
+    ${ui.bulkLog.length ? `<ul class="small" style="margin:0; padding-left:18px">${ui.bulkLog.map((l) => `<li class="${l.err ? "margin-bad" : ""}">${esc(l.text)}</li>`).join("")}</ul>` : ""}
+  </section>`;
+}
+async function bulkImport(files) {
+  ui.bulkBusy = true; ui.bulkLog = []; flash = null; render();
+  for (const file of files) {
+    const line = { text: `${file.name}: reading...` }; ui.bulkLog.push(line); render();
+    try {
+      const { items, warnings } = await readBoqFile(file, (k, n) => { line.text = `${file.name}: Claude is reading part ${k} of ${n}...`; render(); });
+      if (!items.length) { line.text = `${file.name}: no line items found. ${warnings.join(" ")}`; line.err = true; render(); continue; }
+      const ref = await col("tenders").add({ title: file.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " "), buyer: "", ref: "", closing: "", url: "", status: ui.bulkStatus, source: "past BOQ upload", created: now() });
+      await addItems(ref.id, items, ui.bulkRateAs);
+      line.text = `${file.name}: ${items.length} line items.${rateNote(items, ui.bulkRateAs)}`; render();
+    } catch (e) { line.text = `${file.name}: ${e?.code === "not_granted" ? "Claude wasn't allowed to read it. Allow it in the artifact's Permissions menu." : e?.message || "couldn't be read."}`; line.err = true; render(); }
+  }
+  ui.bulkBusy = false; render();
+}
+
 function renderPrices() {
   const q = ui.priceSearch.trim();
   let rows = list("items").filter((i) => i.cost != null || i.sell != null);
@@ -423,6 +508,7 @@ function renderPrices() {
   return `
   <div class="stack" style="gap:4px"><h1>Price history</h1>
   <p class="lede">Every cost and selling price entered on any tender, with the margin and how that tender turned out. Search finds similar wording, so "crushed stone 19mm" also finds "19mm crushed stone aggregate".</p></div>
+  ${renderBulk()}
   <div class="row"><input id="price-search" type="search" placeholder="Search item description..." value="${esc(ui.priceSearch)}" style="flex:1 1 260px; max-width:420px"></div>
   ${rows.length ? `<div class="tablebox"><table><thead><tr><th>Description</th><th>Unit</th><th class="n">Cost</th><th class="n">Selling</th><th class="n">Margin</th><th>Tender</th><th>Outcome</th><th>Updated</th></tr></thead><tbody>
   ${rows.map((i) => { const t = S.tenders[i.tenderId] || {}; const m = marginPct(i.cost, i.sell);
@@ -527,13 +613,19 @@ document.addEventListener("change", async (e) => {
     write(() => col("tenders").doc(d.tenderStatus).update({ status: el.value }), `Status set to ${el.value}.`);
   } else if (d.rfqBody) {
     write(() => col("rfqs").doc(d.rfqBody).update({ body: el.value }));
+  } else if (el.id === "rate-as") { ui.rateAs = el.value;
+  } else if (el.id === "bulk-rate") { ui.bulkRateAs = el.value;
+  } else if (el.id === "bulk-status") { ui.bulkStatus = el.value;
+  } else if (el.id === "bulk-files" && el.files.length) { bulkImport([...el.files]);
   } else if (el.id === "boq-file" && el.files[0]) {
-    const file = el.files[0];
+    const file = el.files[0], tid = view.tenderId, rateAs = ui.rateAs;
+    ui.importing = true; flash = null; render();
     try {
-      const { items, warnings } = parseWorkbook(await file.arrayBuffer());
+      const { items, warnings, viaClaude } = await readBoqFile(file, (k, n) => setFlash("info", `Claude is reading ${file.name} (part ${k} of ${n})...`));
+      ui.importing = false;
       if (!items.length) return setFlash("err", `Couldn't read line items from ${file.name}: ${warnings.join(" ")} Try copying the rows and pasting them instead.`);
-      await write(() => addItems(view.tenderId, items), `Imported ${items.length} line items from ${file.name}.`);
-    } catch (err) { setFlash("err", `Couldn't open ${file.name}. Save it as .xlsx and try again.`); }
+      await write(() => addItems(tid, items, rateAs), `Imported ${items.length} line items from ${file.name}.${rateNote(items, rateAs)}${viaClaude ? " Claude read this PDF, so check quantities and rates against the original." : ""}`);
+    } catch (err) { ui.importing = false; setFlash("err", err?.code === "not_granted" ? "Claude wasn't allowed to read the PDF. Allow it in the artifact's Permissions menu and try again." : err?.message || `Couldn't open ${file.name}. Save it as .xlsx and try again.`); }
   }
 });
 document.addEventListener("input", (e) => {
@@ -544,19 +636,21 @@ document.addEventListener("input", (e) => {
 async function importPaste() {
   const text = ui.pasteText.trim();
   if (!text) return setFlash("warn", "Paste some BOQ rows or text first.");
-  const tid = view.tenderId;
+  const tid = view.tenderId, rateAs = ui.rateAs;
   if (text.includes("\t")) {
     const res = parseRows(text.split(/\r?\n/).map((l) => l.split("\t")));
-    if (res.items.length) { ui.pasteText = ""; return write(() => addItems(tid, res.items), `Imported ${res.items.length} line items.`); }
+    if (res.items.length) { ui.pasteText = ""; return write(() => addItems(tid, res.items, rateAs), `Imported ${res.items.length} line items.${rateNote(res.items, rateAs)}`); }
   }
   if (!sample) return setFlash("err", "Reading free text needs Claude, which isn't available in this view. Paste rows copied from Excel (with a Description header) instead.");
   ui.importing = true; flash = null; render();
   try {
-    const items = await aiExtract(text);
+    const lines = text.split(/\r?\n/), pages = [];
+    for (let k = 0; k < lines.length; k += 150) pages.push(lines.slice(k, k + 150).join("\n"));
+    const items = await aiExtract(pages, (k, n) => setFlash("info", `Claude is reading part ${k} of ${n}...`));
     ui.importing = false;
     if (!items.length) return setFlash("warn", "Claude didn't find any line items in that text.");
     ui.pasteText = "";
-    await write(() => addItems(tid, items), `Claude read ${items.length} line items. Check quantities and units against the original BOQ.`);
+    await write(() => addItems(tid, items, rateAs), `Claude read ${items.length} line items.${rateNote(items, rateAs)} Check quantities and rates against the original BOQ.`);
   } catch (err) {
     ui.importing = false;
     setFlash("err", err?.code === "not_granted" ? "Claude wasn't allowed to read the BOQ. Allow it in the artifact's Permissions menu and try again." :
