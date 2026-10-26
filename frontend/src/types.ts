@@ -68,6 +68,21 @@ export interface PriceHistoryEntry {
   match_score: number;
 }
 
+export interface PricedItem {
+  line_item_id: number;
+  tender_id: number;
+  tender_title: string;
+  tender_status: TenderStatus;
+  item_no: string | null;
+  description: string;
+  unit: string | null;
+  quantity: number | null;
+  cost_price: number | null;
+  selling_price: number | null;
+  margin_pct: number | null;
+  recorded_at: string;
+}
+
 export interface PriceSuggestion {
   suggested_cost_price: number | null;
   suggested_selling_price: number | null;

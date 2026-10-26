@@ -28,11 +28,18 @@ def create_tender(payload: schemas.TenderCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/fetch", response_model=schemas.TenderFetchResult)
-def fetch_tenders(db: Session = Depends(get_db)):
+def fetch_tenders(relevant_only: bool = True, db: Session = Depends(get_db)):
     try:
         fetched = etenders_source.fetch_open_tenders()
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    not_relevant = 0
+    if relevant_only:
+        keywords = etenders_source.relevance_keywords()
+        relevant = [t for t in fetched if etenders_source.is_relevant(t, keywords)]
+        not_relevant = len(fetched) - len(relevant)
+        fetched = relevant
 
     created = 0
     for item in fetched:
@@ -67,6 +74,7 @@ def fetch_tenders(db: Session = Depends(get_db)):
         fetched=len(fetched),
         created=created,
         skipped=len(fetched) - created,
+        not_relevant=not_relevant,
     )
 
 

@@ -104,6 +104,13 @@ def delete_rfq_draft(rfq_id: int, db: Session = Depends(get_db)):
     return None
 
 
+def _send(draft: models.RFQEmail, db: Session) -> None:
+    email_sender.send_email(draft.supplier.email, draft.subject, draft.body)
+    draft.status = models.RFQStatus.sent
+    draft.sent_at = datetime.utcnow()
+    db.commit()
+
+
 @router.post("/api/rfq/{rfq_id}/send", response_model=schemas.RFQSendResult)
 def send_rfq_draft(rfq_id: int, db: Session = Depends(get_db)):
     draft = db.get(models.RFQEmail, rfq_id)
@@ -113,14 +120,35 @@ def send_rfq_draft(rfq_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="This RFQ has already been sent")
 
     try:
-        email_sender.send_email(draft.supplier.email, draft.subject, draft.body)
+        _send(draft, db)
     except email_sender.SMTPNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:  # smtplib errors etc.
         raise HTTPException(status_code=502, detail=f"Failed to send email: {exc}") from exc
 
-    draft.status = models.RFQStatus.sent
-    draft.sent_at = datetime.utcnow()
-    db.commit()
-
     return schemas.RFQSendResult(sent=True, message=f"Sent to {draft.supplier.email}")
+
+
+@router.post("/api/tenders/{tender_id}/rfq/send-all", response_model=schemas.RFQBulkSendResult)
+def send_all_rfq_drafts(tender_id: int, db: Session = Depends(get_db)):
+    drafts = (
+        db.query(models.RFQEmail)
+        .filter(models.RFQEmail.tender_id == tender_id, models.RFQEmail.status == models.RFQStatus.draft)
+        .all()
+    )
+    if not drafts:
+        raise HTTPException(status_code=400, detail="There are no unsent drafts for this tender")
+
+    sent, errors = 0, []
+    for draft in drafts:
+        try:
+            _send(draft, db)
+            sent += 1
+        except email_sender.SMTPNotConfiguredError as exc:
+            # Nothing else will succeed either - stop and report it once.
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except Exception as exc:  # one bad address shouldn't block the rest
+            db.rollback()
+            errors.append(f"{draft.supplier.name} ({draft.supplier.email}): {exc}")
+
+    return schemas.RFQBulkSendResult(sent=sent, failed=len(errors), errors=errors)

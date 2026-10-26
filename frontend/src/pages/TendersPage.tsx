@@ -32,7 +32,10 @@ export default function TendersPage() {
     setNotice(null);
     try {
       const result = await api.fetchTenders();
-      setNotice(`Fetched ${result.fetched} tenders from eTenders, added ${result.created} new (${result.skipped} already known).`);
+      setNotice(
+        `Found ${result.fetched} relevant open tenders on eTenders (${result.not_relevant} unrelated ones ignored), ` +
+          `added ${result.created} new (${result.skipped} already known).`
+      );
       load();
     } catch (e: any) {
       setError(e.message);

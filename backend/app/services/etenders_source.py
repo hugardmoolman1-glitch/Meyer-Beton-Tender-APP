@@ -32,14 +32,56 @@ drifted since this was written.
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 ETENDERS_OCDS_API = "https://ocds-api.etenders.gov.za/api/OCDSReleases"
 SOURCE_NAME = "etenders"
+
+# Keywords that make a tender relevant to Meyer Beton. A tender is kept if any
+# keyword appears in its title, description or category. Override with a
+# comma-separated TENDER_KEYWORDS env var; set it to "*" to keep everything.
+DEFAULT_KEYWORDS = [
+    "concrete",
+    "precast",
+    "pre-cast",
+    "kerb",
+    "paving",
+    "paver",
+    "culvert",
+    "manhole",
+    "pipe",
+    "block",
+    "brick",
+    "cement",
+    "retaining wall",
+    "palisade",
+    "stormwater",
+    "civil",
+    "road",
+    "bridge",
+    "drainage",
+    "construction",
+]
+
+
+def relevance_keywords() -> List[str]:
+    raw = os.environ.get("TENDER_KEYWORDS", "").strip()
+    if not raw:
+        return DEFAULT_KEYWORDS
+    return [k.strip().lower() for k in raw.split(",") if k.strip()]
+
+
+def is_relevant(tender: "FetchedTender", keywords: List[str]) -> bool:
+    if not keywords or "*" in keywords:
+        return True
+    haystack = " ".join(filter(None, [tender.title, tender.description, tender.category])).lower()
+    return any(kw in haystack for kw in keywords)
 
 
 @dataclass
@@ -89,18 +131,31 @@ def _release_to_tender(release: dict) -> Optional[FetchedTender]:
     )
 
 
-def fetch_open_tenders(page_size: int = 50, max_pages: int = 3, timeout: int = 15) -> List[FetchedTender]:
+def fetch_open_tenders(
+    days_back: int = 30, page_size: int = 100, max_pages: int = 10, timeout: int = 30
+) -> List[FetchedTender]:
     """
-    Pull recent tender releases from the eTenders OCDS API and return the
-    ones that still look open (closing date in the future, or status active).
+    Pull tender releases published in the last `days_back` days from the
+    eTenders OCDS API and return the ones that still look open (closing date
+    in the future). Relevance filtering is left to the caller (see is_relevant).
 
     Raises RuntimeError with a human-readable message on network/parse failure
     so the API layer can surface something actionable instead of a raw
     traceback (this portal is not reachable from every environment).
     """
     results: List[FetchedTender] = []
+    date_to = datetime.utcnow().date()
+    date_from = date_to - timedelta(days=days_back)
     for page in range(1, max_pages + 1):
-        url = f"{ETENDERS_OCDS_API}?PageNumber={page}"
+        query = urllib.parse.urlencode(
+            {
+                "PageNumber": page,
+                "PageSize": page_size,
+                "dateFrom": date_from.isoformat(),
+                "dateTo": date_to.isoformat(),
+            }
+        )
+        url = f"{ETENDERS_OCDS_API}?{query}"
         try:
             req = urllib.request.Request(url, headers={"Accept": "application/json"})
             with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -126,5 +181,8 @@ def fetch_open_tenders(page_size: int = 50, max_pages: int = 3, timeout: int = 1
             if fetched.closing_date and fetched.closing_date < now:
                 continue
             results.append(fetched)
+
+        if len(releases) < page_size:
+            break
 
     return results

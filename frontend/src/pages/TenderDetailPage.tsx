@@ -320,6 +320,21 @@ function RfqTab({ tenderId }: { tenderId: number }) {
     }
   };
 
+  const handleSendAll = async () => {
+    const pending = drafts.filter((d) => d.status === "draft").length;
+    if (!confirm(`Email all ${pending} unsent RFQ draft(s) to their suppliers now?`)) return;
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await api.sendAllRfqDrafts(tenderId);
+      setNotice(`Sent ${result.sent} RFQ email(s).`);
+      if (result.failed > 0) setError(`${result.failed} failed: ${result.errors.join("; ")}`);
+    } catch (e: any) {
+      setError(e.message);
+    }
+    load();
+  };
+
   const handleDelete = async (draftId: number) => {
     if (!confirm("Delete this draft?")) return;
     await api.deleteRfqDraft(draftId);
@@ -333,7 +348,7 @@ function RfqTab({ tenderId }: { tenderId: number }) {
       <div className="card">
         <p className="muted">
           Select suppliers to send to, or leave none selected to auto-match suppliers by category against every
-          line item. This only creates <strong>drafts</strong> - nothing is emailed until you review and hit Send.
+          line item. This creates <strong>drafts</strong> first - review them, then send one at a time or all at once.
         </p>
         <div className="toolbar" style={{ flexWrap: "wrap" }}>
           {suppliers.map((s) => (
@@ -347,9 +362,14 @@ function RfqTab({ tenderId }: { tenderId: number }) {
             </label>
           ))}
         </div>
-        <button onClick={handleGenerate} disabled={generating}>
-          {generating ? "Generating..." : "Generate RFQ draft(s)"}
-        </button>
+        <div className="toolbar">
+          <button onClick={handleGenerate} disabled={generating}>
+            {generating ? "Generating..." : "Generate RFQ draft(s)"}
+          </button>
+          {drafts.some((d) => d.status === "draft") && (
+            <button onClick={handleSendAll}>Send all unsent drafts</button>
+          )}
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}

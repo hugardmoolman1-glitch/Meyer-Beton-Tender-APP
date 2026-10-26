@@ -2,10 +2,10 @@
 
 An internal tool for digitizing Meyer Beton's tender process:
 
-1. **Find tenders** - pull open tenders from South Africa's national eTenders portal, or add them manually.
+1. **Find tenders** - pull open tenders from South Africa's national eTenders portal (filtered to ones relevant to us - see "Tender relevance" below), or add them manually.
 2. **Track a tender's BOQ** - upload a Bill of Quantities (Excel, PDF, or Word) and it's parsed into line items automatically.
-3. **Keep price history** - every line item stores its cost price (what we pay) and selling price (what we quote), across every tender. When pricing a new tender, the app suggests prices based on similar line items priced before.
-4. **Get supplier quotes** - generate RFQ (request-for-quote) email drafts per supplier, matched to the relevant BOQ line items by category. Drafts are always reviewed by a person before sending - nothing goes out automatically.
+3. **Keep price history** - every line item stores its cost price (what we pay) and selling price (what we quote), across every tender. The **Price History** page lists them all with margin and tender outcome, searchable by description. When pricing a new tender, the app suggests prices based on similar line items priced before.
+4. **Get supplier quotes** - generate RFQ (request-for-quote) email drafts per supplier, matched to the relevant BOQ line items by category, then send them one by one or with **Send all unsent drafts** in one click.
 
 ## Architecture
 
@@ -43,7 +43,7 @@ Open http://localhost:5173. The frontend expects the backend at `http://localhos
 
 ## Sending supplier emails
 
-RFQ emails are always created as **drafts** first, editable in the UI, and only sent when you click Send on a specific draft. To enable actual sending, set these environment variables on the backend before starting it:
+RFQ emails are always created as **drafts** first, editable in the UI, and only sent when you click Send on a draft or "Send all unsent drafts" for the tender. When sending all, a failure for one supplier (e.g. a bad address) is reported without stopping the rest. To enable actual sending, set these environment variables on the backend before starting it:
 
 ```
 SMTP_HOST=smtp.example.com
@@ -63,6 +63,12 @@ Tenders are fetched from South Africa's public eTenders OCDS API (`https://ocds-
 - Run "Fetch from eTenders" once from the Tenders page and check the results look sane.
 - If the portal's response shape has changed, adjust `_release_to_tender()` in that file - the parsing is isolated to one function.
 - Manual tender entry always works regardless, as a fallback.
+
+The fetch asks for tenders published in the last 30 days (`dateFrom`/`dateTo`, 100 per page, up to 10 pages) and keeps only those whose closing date is still in the future.
+
+### Tender relevance
+
+Only tenders whose title, description or category contains one of a list of keywords are imported - by default concrete/civil terms (concrete, precast, kerb, paving, culvert, manhole, stormwater, road, ...; see `DEFAULT_KEYWORDS` in `etenders_source.py`). Override with a comma-separated env var, e.g. `TENDER_KEYWORDS=concrete,precast,kerb,culvert`, or set `TENDER_KEYWORDS=*` to import everything. The fetch result tells you how many unrelated tenders were ignored.
 
 To add another tender source (a specific client portal, for example), add a new module alongside `etenders_source.py` with the same `fetch_open_tenders() -> List[FetchedTender]` shape and wire it into the `/api/tenders/fetch` endpoint in `backend/app/routers/tenders.py`.
 

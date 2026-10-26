@@ -1,4 +1,4 @@
-import type { LineItem, PriceSuggestion, RFQEmail, Supplier, Tender } from "./types";
+import type { LineItem, PricedItem, PriceSuggestion, RFQEmail, Supplier, Tender } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 
@@ -31,7 +31,7 @@ export const api = {
     request<Tender>(`/api/tenders/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteTender: (id: number) => request<void>(`/api/tenders/${id}`, { method: "DELETE" }),
   fetchTenders: () =>
-    request<{ fetched: number; created: number; skipped: number; message?: string }>("/api/tenders/fetch", {
+    request<{ fetched: number; created: number; skipped: number; not_relevant: number; message?: string }>("/api/tenders/fetch", {
       method: "POST",
     }),
 
@@ -54,6 +54,8 @@ export const api = {
   // Pricing
   priceHistory: (description: string) =>
     request<import("./types").PriceHistoryEntry[]>(`/api/pricing/history?description=${encodeURIComponent(description)}`),
+  pricedItems: (search?: string) =>
+    request<PricedItem[]>(`/api/pricing/items${search ? `?search=${encodeURIComponent(search)}` : ""}`),
   suggestPrice: (lineItemId: number) => request<PriceSuggestion>(`/api/pricing/suggest/${lineItemId}`),
 
   // Suppliers
@@ -78,4 +80,8 @@ export const api = {
     request<RFQEmail>(`/api/rfq/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteRfqDraft: (id: number) => request<void>(`/api/rfq/${id}`, { method: "DELETE" }),
   sendRfqDraft: (id: number) => request<{ sent: boolean; message: string }>(`/api/rfq/${id}/send`, { method: "POST" }),
+  sendAllRfqDrafts: (tenderId: number) =>
+    request<{ sent: number; failed: number; errors: string[] }>(`/api/tenders/${tenderId}/rfq/send-all`, {
+      method: "POST",
+    }),
 };

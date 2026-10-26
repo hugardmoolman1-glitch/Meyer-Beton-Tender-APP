@@ -50,6 +50,7 @@ class TenderFetchResult(BaseModel):
     fetched: int
     created: int
     skipped: int
+    not_relevant: int = 0
     message: Optional[str] = None
 
 
@@ -115,6 +116,21 @@ class PriceHistoryEntry(BaseModel):
     selling_price: Optional[float] = None
     recorded_at: datetime
     match_score: float
+
+
+class PricedItemOut(BaseModel):
+    line_item_id: int
+    tender_id: int
+    tender_title: str
+    tender_status: TenderStatus
+    item_no: Optional[str] = None
+    description: str
+    unit: Optional[str] = None
+    quantity: Optional[float] = None
+    cost_price: Optional[float] = None
+    selling_price: Optional[float] = None
+    margin_pct: Optional[float] = None  # (selling - cost) / selling * 100
+    recorded_at: datetime
 
 
 class PriceSuggestion(BaseModel):
@@ -187,3 +203,9 @@ class RFQEmailOut(BaseModel):
 class RFQSendResult(BaseModel):
     sent: bool
     message: str
+
+
+class RFQBulkSendResult(BaseModel):
+    sent: int
+    failed: int
+    errors: List[str] = []
